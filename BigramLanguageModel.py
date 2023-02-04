@@ -31,11 +31,29 @@ val_data = data[dividing_index:]
 def get_data_batch(part: str) -> Tuple[torch.Tensor, torch.Tensor]:
     data = train_data if part == "train" else val_data
     indices = torch.randint(data.shape[0] - block_size, (batch_size,))
-    x = torch.stack([data[i: i + block_size] for i in indices])
-    y = torch.stack([data[i+1: i + block_size + 1] for i in indices])
+    x = torch.stack([data[i: (i + block_size)] for i in indices])
+    x = x.to(device)
+    y = torch.stack([data[(i+1): (i + block_size + 1)] for i in indices])
+    y = y.to(device)
 
     return x, y
 
+@torch.no_grad()
+def estimate_loss(model: nn.Module) -> Dict:
+    model.eval()
+    out = {}
+
+    for mode in ["train", "val"]:
+        losses = torch.zeros(eval_iters)
+        for i in range(eval_iters):
+            X, Y = get_data_batch(mode)
+            logits, loss = model(X)
+            losses[i] = loss.item()
+
+        out[mode] = losses.mean()
+
+    model.train()
+    return out
 
 class BigramLanguageModel(nn.Module):
     def __init__(self, vocab_size: int):
@@ -60,7 +78,7 @@ class BigramLanguageModel(nn.Module):
     def generate(self, input: torch.Tensor, max_length: int = 200) -> torch.Tensor:
 
         for _ in range(max_length):
-            #loss not used because it's none
+            #losses not used because it's none
             logits, loss = self(input)
 
             logits = logits[:,-1, :]
@@ -73,4 +91,23 @@ class BigramLanguageModel(nn.Module):
         return input
 
 
+model = BigramLanguageModel(len(char_set))
+model = model.to(device)
 
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+
+for i in range(max_iters):
+    if i % eval_interval == 0:
+        losses = estimate_loss(model)
+        print(f"Step {i} train loss {losses['train']:.4f} val loss {losses['val']:.4f}")
+
+    X, Y = get_data_batch("train")
+    logits, loss = model(X, Y)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+
+#generation
+context = torch.zeros((1, 1), dtype=torch.long, device=device)
+print(decode(model.generate(context, 400)[0].tolist()))
