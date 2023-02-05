@@ -80,12 +80,24 @@ class Head(nn.Module):
 
 class MultiHeadSelfAttention(nn.Module):
     def __init__(self, num_heads: int, head_dim: int):
+        super(MultiHeadSelfAttention, self).__init__()
         self.heads = nn.ModuleList([Head(embed_dim, head_dim) for _ in range(num_heads)])
 
     def forward(self, X):
         output = torch.cat([layer(x) for layer in self.heads], -1)
         return output
 
+class FeedForward(nn.Module):
+    def __init__(self, embed_dim):
+        super(FeedForward, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(embed_dim,4 * embed_dim),
+            nn.ReLU(),
+            nn.Linear(4 * embed_dim, embed_dim)
+        )
+
+    def forward(self, X):
+        return self.layers(X)
 
 
 class BigramLanguageModel(nn.Module):
@@ -93,8 +105,9 @@ class BigramLanguageModel(nn.Module):
         super(BigramLanguageModel, self).__init__()
         self.lookup = nn.Embedding(vocab_size, embed_dim)
         self.position = nn.Embedding(block_size, embed_dim)
-        assert embed_dim / num_heads == 0
-        self.multi_head = MultiHeadSelfAttention(num_heads, embed_dim / num_heads)
+        assert embed_dim // num_heads == 0
+        self.multi_head = MultiHeadSelfAttention(num_heads, embed_dim // num_heads)
+        self.feed_forward = FeedForward(embed_dim)
         self.projection = nn.Linear(head_dim, vocab_size)
 
 
