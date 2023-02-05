@@ -100,14 +100,26 @@ class FeedForward(nn.Module):
         return self.layers(X)
 
 
+class Block(nn.Module):
+    def __init__(self, embed_dim, num_heads):
+        super(Block, self).__init__()
+        assert embed_dim // num_heads == 0
+        self.multi_head = MultiHeadSelfAttention(num_heads, embed_dim // num_heads)
+        self.feed_forward = FeedForward(embed_dim)
+
+    def forward(self, X):
+        X = self.multi_head(X)
+        X = self.feed_forward(X)
+        return X
+
+
 class BigramLanguageModel(nn.Module):
     def __init__(self, vocab_size: int, embed_dim: int, num_heads: int):
         super(BigramLanguageModel, self).__init__()
         self.lookup = nn.Embedding(vocab_size, embed_dim)
         self.position = nn.Embedding(block_size, embed_dim)
         assert embed_dim // num_heads == 0
-        self.multi_head = MultiHeadSelfAttention(num_heads, embed_dim // num_heads)
-        self.feed_forward = FeedForward(embed_dim)
+        self.block = Block(embed_dim, num_heads)
         self.projection = nn.Linear(head_dim, vocab_size)
 
 
@@ -116,7 +128,7 @@ class BigramLanguageModel(nn.Module):
         logits = self.lookup(input)
         positions = self.position(torch.arange(S, device=device))
         x = logits + positions
-        x = self.head(x)
+        x = self.block(x)
         logits = self.projection(x)
 
         if target == None:
