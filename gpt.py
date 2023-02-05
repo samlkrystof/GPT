@@ -13,6 +13,8 @@ learning_rate = 1e-3
 train_percentage = 0.8
 dropout = 0.2
 num_blocks = 6
+num_heads = 8
+embed_dim = 512
 
 with open("shakespeare.txt", "r", encoding="utf-8") as f:
     text = f.read()
@@ -175,7 +177,7 @@ class GPT(nn.Module):
         return idx
 
 
-model = GPT(len(char_set), 32, 4, dropout, num_blocks)
+model = GPT(len(char_set), embed_dim, num_heads, dropout, num_blocks)
 model = model.to(device)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
