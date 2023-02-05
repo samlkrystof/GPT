@@ -1,13 +1,13 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-
+from typing import Tuple, Dict
 batch_size = 32
 block_size = 8
 max_iters = 3000
 eval_interval = 300
 eval_iters = 100
-device = "gpu" if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 learning_rate = 1e-2
 train_percentage = 0.8
 
@@ -16,8 +16,8 @@ with open("shakespeare.txt", "r", encoding="utf-8") as f:
 
 char_set = sorted(list(set(text)))
 
-chtoi = {ch: i for ch, i in enumerate(char_set)}
-itoch = {i: ch for ch, i in enumerate(char_set)}
+chtoi = {ch: i for i, ch in enumerate(char_set)}
+itoch = {i: ch for i, ch in enumerate(char_set)}
 
 encode = lambda s: [chtoi[c] for c in s] # encoding function which maps chars to index
 decode = lambda n: "".join([itoch[e] for e in n]) #decoding function which maps indexes to chars
@@ -47,7 +47,7 @@ def estimate_loss(model: nn.Module) -> Dict:
         losses = torch.zeros(eval_iters)
         for i in range(eval_iters):
             X, Y = get_data_batch(mode)
-            logits, loss = model(X)
+            logits, loss = model(X, Y)
             losses[i] = loss.item()
 
         out[mode] = losses.mean()
@@ -57,6 +57,7 @@ def estimate_loss(model: nn.Module) -> Dict:
 
 class BigramLanguageModel(nn.Module):
     def __init__(self, vocab_size: int):
+        super(BigramLanguageModel, self).__init__()
         self.lookup = nn.Embedding(vocab_size, vocab_size)
 
 
@@ -75,20 +76,20 @@ class BigramLanguageModel(nn.Module):
         return logits, loss
 
     @torch.no_grad()
-    def generate(self, input: torch.Tensor, max_length: int = 200) -> torch.Tensor:
+    def generate(self, idx: torch.Tensor, max_length: int = 200) -> torch.Tensor:
 
         for _ in range(max_length):
             #losses not used because it's none
-            logits, loss = self(input)
+            logits, loss = self(idx)
 
             logits = logits[:,-1, :]
-            probabilities = logits.softmax(logits, dim=1)
+            probabilities = F.softmax(logits, dim=1)
 
             next_input = torch.multinomial(probabilities, num_samples=1)
 
-            input = torch.cat((input, next_input), dim=1)
+            idx = torch.cat((idx, next_input), dim=1)
 
-        return input
+        return idx
 
 
 model = BigramLanguageModel(len(char_set))
