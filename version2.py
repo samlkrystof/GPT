@@ -10,6 +10,8 @@ eval_iters = 100
 device = "cuda" if torch.cuda.is_available() else "cpu"
 learning_rate = 1e-3
 train_percentage = 0.8
+dropout = 0.2
+num_blocks = 6
 
 with open("shakespeare.txt", "r", encoding="utf-8") as f:
     text = f.read()
@@ -56,13 +58,14 @@ def estimate_loss(model: nn.Module) -> Dict:
     return out
 
 class Head(nn.Module):
-    def __init__(self, embed_dim: int, head_dim: int):
+    def __init__(self, embed_dim: int, head_dim: int, dropout: float):
         super(Head, self).__init__()
         self.key = nn.Linear(embed_dim, head_dim)
         self.query = nn.Linear(embed_dim, head_dim)
         self.value = nn.Linear(embed_dim, head_dim)
         self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
 
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, X):
         B, S, E = X.shape
@@ -74,23 +77,25 @@ class Head(nn.Module):
         weight = weight.masked_fill(self.tril[:S, :S] == 0, -float("inf"))
         # weight is (B, S, S)
         weight = F.softmax(weight, dim=-1)
+        weight = self.dropout(weight)
         output = weight @ value # (B, S, S) @ (B, S, H) -> (B, S, H)
 
         return output
 
 class MultiHeadSelfAttention(nn.Module):
-    def __init__(self, embed_dim: int, num_heads: int):
+    def __init__(self, embed_dim: int, num_heads: int, dropout: float):
         super(MultiHeadSelfAttention, self).__init__()
         head_dim = embed_dim // num_heads
-        self.heads = nn.ModuleList([Head(embed_dim, head_dim) for _ in range(num_heads)])
+        self.heads = nn.ModuleList([Head(embed_dim, head_dim, dropout) for _ in range(num_heads)])
         self.projection = nn.Linear(embed_dim, embed_dim)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, X):
         output = torch.cat([layer(X) for layer in self.heads], -1)
-        return self.projection(output)
+        return self.dropout(self.projection(output))
 
 class FeedForward(nn.Module):
-    def __init__(self, embed_dim):
+    def __init__(self, embed_dim, dropout: float):
         super(FeedForward, self).__init__()
         self.layers = nn.Sequential(
             nn.Linear(embed_dim,4 * embed_dim),
@@ -98,16 +103,18 @@ class FeedForward(nn.Module):
             nn.Linear(4 * embed_dim, embed_dim)
         )
 
+        self.dropout = nn.Dropout(dropout)
+
     def forward(self, X):
-        return self.layers(X)
+        return self.dropout(self.layers(X))
 
 
 class Block(nn.Module):
-    def __init__(self, embed_dim, num_heads):
+    def __init__(self, embed_dim, num_heads, dropout: float):
         super(Block, self).__init__()
         assert embed_dim % num_heads == 0
-        self.multi_head = MultiHeadSelfAttention(embed_dim, num_heads)
-        self.feed_forward = FeedForward(embed_dim)
+        self.multi_head = MultiHeadSelfAttention(embed_dim, num_heads, dropout)
+        self.feed_forward = FeedForward(embed_dim, dropout)
         self.lnorm1 = nn.LayerNorm(embed_dim)
         self.lnorm2 = nn.LayerNorm(embed_dim)
 
@@ -118,11 +125,11 @@ class Block(nn.Module):
 
 
 class BigramLanguageModel(nn.Module):
-    def __init__(self, vocab_size: int, embed_dim: int, num_heads: int):
+    def __init__(self, vocab_size: int, embed_dim: int, num_heads: int, dropout: float, num_blocks: int):
         super(BigramLanguageModel, self).__init__()
         self.lookup = nn.Embedding(vocab_size, embed_dim)
         self.position = nn.Embedding(block_size, embed_dim)
-        self.blocks = nn.Sequential(*[Block(embed_dim, num_heads) for _ in num_blocks],
+        self.blocks = nn.Sequential(*[Block(embed_dim, num_heads, dropout) for _ in range(num_blocks)],
         )
         self.lnorm = nn.LayerNorm(embed_dim)
         self.projection = nn.Linear(embed_dim, vocab_size)
@@ -167,7 +174,7 @@ class BigramLanguageModel(nn.Module):
         return idx
 
 
-model = BigramLanguageModel(len(char_set), 32, 4)
+model = BigramLanguageModel(len(char_set), 32, 4, dropout, num_blocks)
 model = model.to(device)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
