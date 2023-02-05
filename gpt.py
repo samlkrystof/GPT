@@ -125,9 +125,9 @@ class Block(nn.Module):
         return X
 
 
-class BigramLanguageModel(nn.Module):
+class GPT(nn.Module):
     def __init__(self, vocab_size: int, embed_dim: int, num_heads: int, dropout: float, num_blocks: int):
-        super(BigramLanguageModel, self).__init__()
+        super(GPT, self).__init__()
         self.lookup = nn.Embedding(vocab_size, embed_dim)
         self.position = nn.Embedding(block_size, embed_dim)
         self.blocks = nn.Sequential(*[Block(embed_dim, num_heads, dropout) for _ in range(num_blocks)],
@@ -175,7 +175,7 @@ class BigramLanguageModel(nn.Module):
         return idx
 
 
-model = BigramLanguageModel(len(char_set), 32, 4, dropout, num_blocks)
+model = GPT(len(char_set), 32, 4, dropout, num_blocks)
 model = model.to(device)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
