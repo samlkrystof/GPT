@@ -4,7 +4,7 @@ import torch.nn as nn
 from typing import Tuple, Dict
 batch_size = 32
 block_size = 8
-max_iters = 3000
+max_iters = 5000
 eval_interval = 300
 eval_iters = 100
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -79,13 +79,15 @@ class Head(nn.Module):
         return output
 
 class MultiHeadSelfAttention(nn.Module):
-    def __init__(self, num_heads: int, head_dim: int):
+    def __init__(self, embed_dim: int, num_heads: int):
         super(MultiHeadSelfAttention, self).__init__()
+        head_dim = embed_dim // num_heads
         self.heads = nn.ModuleList([Head(embed_dim, head_dim) for _ in range(num_heads)])
+        self.projection = nn.Linear(embed_dim, embed_dim)
 
     def forward(self, X):
-        output = torch.cat([layer(x) for layer in self.heads], -1)
-        return output
+        output = torch.cat([layer(X) for layer in self.heads], -1)
+        return self.projection(output)
 
 class FeedForward(nn.Module):
     def __init__(self, embed_dim):
@@ -103,13 +105,13 @@ class FeedForward(nn.Module):
 class Block(nn.Module):
     def __init__(self, embed_dim, num_heads):
         super(Block, self).__init__()
-        assert embed_dim // num_heads == 0
-        self.multi_head = MultiHeadSelfAttention(num_heads, embed_dim // num_heads)
+        assert embed_dim % num_heads == 0
+        self.multi_head = MultiHeadSelfAttention(embed_dim, num_heads)
         self.feed_forward = FeedForward(embed_dim)
 
     def forward(self, X):
-        X = self.multi_head(X)
-        X = self.feed_forward(X)
+        X = X + self.multi_head(X)
+        X = X + self.feed_forward(X)
         return X
 
 
@@ -118,9 +120,12 @@ class BigramLanguageModel(nn.Module):
         super(BigramLanguageModel, self).__init__()
         self.lookup = nn.Embedding(vocab_size, embed_dim)
         self.position = nn.Embedding(block_size, embed_dim)
-        assert embed_dim // num_heads == 0
-        self.block = Block(embed_dim, num_heads)
-        self.projection = nn.Linear(head_dim, vocab_size)
+        self.blocks = nn.Sequential(
+            Block(embed_dim, num_heads),
+            Block(embed_dim, num_heads),
+            Block(embed_dim, num_heads)
+        )
+        self.projection = nn.Linear(embed_dim, vocab_size)
 
 
     def forward(self, input: torch.Tensor, target: torch.Tensor = None) -> Tuple[torch.Tensor, int]:
@@ -128,7 +133,7 @@ class BigramLanguageModel(nn.Module):
         logits = self.lookup(input)
         positions = self.position(torch.arange(S, device=device))
         x = logits + positions
-        x = self.block(x)
+        x = self.blocks(x)
         logits = self.projection(x)
 
         if target == None:
@@ -161,7 +166,7 @@ class BigramLanguageModel(nn.Module):
         return idx
 
 
-model = BigramLanguageModel(len(char_set), 32, 16)
+model = BigramLanguageModel(len(char_set), 32, 4)
 model = model.to(device)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
