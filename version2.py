@@ -108,10 +108,12 @@ class Block(nn.Module):
         assert embed_dim % num_heads == 0
         self.multi_head = MultiHeadSelfAttention(embed_dim, num_heads)
         self.feed_forward = FeedForward(embed_dim)
+        self.lnorm1 = nn.LayerNorm(embed_dim)
+        self.lnorm2 = nn.LayerNorm(embed_dim)
 
     def forward(self, X):
-        X = X + self.multi_head(X)
-        X = X + self.feed_forward(X)
+        X = X + self.multi_head(self.lnorm1(X))
+        X = X + self.feed_forward(self.lnorm2(X))
         return X
 
 
@@ -120,11 +122,9 @@ class BigramLanguageModel(nn.Module):
         super(BigramLanguageModel, self).__init__()
         self.lookup = nn.Embedding(vocab_size, embed_dim)
         self.position = nn.Embedding(block_size, embed_dim)
-        self.blocks = nn.Sequential(
-            Block(embed_dim, num_heads),
-            Block(embed_dim, num_heads),
-            Block(embed_dim, num_heads)
+        self.blocks = nn.Sequential(*[Block(embed_dim, num_heads) for _ in num_blocks],
         )
+        self.lnorm = nn.LayerNorm(embed_dim)
         self.projection = nn.Linear(embed_dim, vocab_size)
 
 
@@ -134,6 +134,7 @@ class BigramLanguageModel(nn.Module):
         positions = self.position(torch.arange(S, device=device))
         x = logits + positions
         x = self.blocks(x)
+        x = self.lnorm(x)
         logits = self.projection(x)
 
         if target == None:
