@@ -2,8 +2,9 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from typing import Tuple, Dict
-batch_size = 32
-block_size = 8
+batch_size = 64
+block_size = 256
+
 max_iters = 5000
 eval_interval = 300
 eval_iters = 100
