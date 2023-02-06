@@ -94,14 +94,36 @@ class Head(nn.Module):
 class MultiHeadSelfAttention(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int, dropout: float):
         super(MultiHeadSelfAttention, self).__init__()
-        head_dim = embed_dim // num_heads
-        self.heads = nn.ModuleList([Head(embed_dim, head_dim, dropout) for _ in range(num_heads)])
+        self.head_dim = embed_dim // num_heads
+        self.num_heads = num_heads
+
+        self.key = nn.Linear(embed_dim, embed_dim)
+        self.query = nn.Linear(embed_dim, embed_dim)
+        self.value = nn.Linear(embed_dim, embed_dim)
         self.projection = nn.Linear(embed_dim, embed_dim)
+        self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
+
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, X):
-        output = torch.cat([layer(X) for layer in self.heads], -1)
-        return self.dropout(self.projection(output))
+
+    def forward(self, X: torch.Tensor):
+
+        B, S, E = X.shape
+
+        key, query, value = [layer(X).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
+                             for layer in [self.key, self.query, self.value]]
+
+        res = (query @ key.transpose(-1, -2)) / E ** -0.5
+        res = torch.masked_fill(res, self.tril[:S, :S] == 0, -float("inf"))
+        res = F.softmax(res, -1)
+        res = self.dropout(res)
+        res = res @ value
+
+        res = res.transpose(1,2).contiguous().view(B, S, E)
+        output = self.projection(res)
+
+        return output
+
 
 
 class FeedForward(nn.Module):
