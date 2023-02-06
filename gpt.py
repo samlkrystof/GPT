@@ -78,9 +78,7 @@ class MultiHeadSelfAttention(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-
     def forward(self, X: torch.Tensor):
-
         B, S, E = X.shape
 
         key, query, value = [layer(X).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
@@ -92,11 +90,10 @@ class MultiHeadSelfAttention(nn.Module):
         res = self.dropout(res)
         res = res @ value
 
-        res = res.transpose(1,2).contiguous().view(B, S, E)
+        res = res.transpose(1, 2).contiguous().view(B, S, E)
         output = self.projection(res)
 
         return output
-
 
 
 class FeedForward(nn.Module):
