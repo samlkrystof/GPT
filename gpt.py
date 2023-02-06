@@ -64,33 +64,6 @@ def estimate_loss(model: nn.Module) -> Dict:
     return out
 
 
-class Head(nn.Module):
-    def __init__(self, embed_dim: int, head_dim: int, dropout: float):
-        super(Head, self).__init__()
-        self.key = nn.Linear(embed_dim, head_dim)
-        self.query = nn.Linear(embed_dim, head_dim)
-        self.value = nn.Linear(embed_dim, head_dim)
-        self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
-
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, X):
-        B, S, E = X.shape
-        key = self.key(X)  # (B, S, H)
-        value = self.value(X)  # (B, S, H)
-        query = self.query(X)  # (B, S, H)
-
-        weight = query @ key.transpose(-2,
-                                       -1) * E ** - 0.5  # (B, S, H) matmul (B, H, S) divided by sqrt of embedding dim
-        weight = weight.masked_fill(self.tril[:S, :S] == 0, -float("inf"))
-        # weight is (B, S, S)
-        weight = F.softmax(weight, dim=-1)
-        weight = self.dropout(weight)
-        output = weight @ value  # (B, S, S) @ (B, S, H) -> (B, S, H)
-
-        return output
-
-
 class MultiHeadSelfAttention(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int, dropout: float):
         super(MultiHeadSelfAttention, self).__init__()
