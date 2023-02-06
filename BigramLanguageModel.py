@@ -29,6 +29,11 @@ train_data = data[:dividing_index]
 val_data = data[dividing_index:]
 
 def get_data_batch(part: str) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Get a batch of data from the training or validation set
+    :param part: "train" or "val" to indicate which set to get data from
+    :return: a tuple of (input, target) tensors
+    """
     data = train_data if part == "train" else val_data
     indices = torch.randint(data.shape[0] - block_size, (batch_size,))
     x = torch.stack([data[i: (i + block_size)] for i in indices])
@@ -40,6 +45,11 @@ def get_data_batch(part: str) -> Tuple[torch.Tensor, torch.Tensor]:
 
 @torch.no_grad()
 def estimate_loss(model: nn.Module) -> Dict:
+    """
+    Estimate the loss on the training and validation sets
+    :param model: the model to evaluate
+    :return: a dictionary with keys "train" and "val" containing the estimated loss on each set
+    """
     model.eval()
     out = {}
 
@@ -56,12 +66,22 @@ def estimate_loss(model: nn.Module) -> Dict:
     return out
 
 class BigramLanguageModel(nn.Module):
+    """
+    A simple bigram language model
+    """
+
     def __init__(self, vocab_size: int):
         super(BigramLanguageModel, self).__init__()
         self.lookup = nn.Embedding(vocab_size, vocab_size)
 
 
     def forward(self, input: torch.Tensor, target: torch.Tensor = None) -> Tuple[torch.Tensor, int]:
+        """
+        Forward pass of the model
+        :param input: shape (B, S, E) where B is the batch size, S is the sequence length, and E is the embedding size
+        :param target: shape (B, S) where B is the batch size and S is the sequence length
+        :return: a tuple of (logits, loss) where logits is the output of the model and loss is the cross entropy loss
+        """
         logits = self.lookup(input)
 
         if target == None:

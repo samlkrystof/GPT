@@ -36,6 +36,11 @@ val_data = data[dividing_index:]
 
 
 def get_data_batch(part: str) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+        Get a batch of data from the training or validation set
+        :param part: "train" or "val" to indicate which set to get data from
+        :return: a tuple of (input, target) tensors
+        """
     data = train_data if part == "train" else val_data
     indices = torch.randint(data.shape[0] - block_size, (batch_size,))
     x = torch.stack([data[i: (i + block_size)] for i in indices])
@@ -48,6 +53,11 @@ def get_data_batch(part: str) -> Tuple[torch.Tensor, torch.Tensor]:
 
 @torch.no_grad()
 def estimate_loss(model: nn.Module) -> Dict:
+    """
+        Estimate the loss on the training and validation sets
+        :param model: the model to evaluate
+        :return: a dictionary with keys "train" and "val" containing the estimated loss on each set
+        """
     model.eval()
     out = {}
 
@@ -65,6 +75,9 @@ def estimate_loss(model: nn.Module) -> Dict:
 
 
 class MultiHeadSelfAttention(nn.Module):
+    """
+    Multi-head self-attention layer
+    """
     def __init__(self, embed_dim: int, num_heads: int, dropout: float):
         super(MultiHeadSelfAttention, self).__init__()
         self.head_dim = embed_dim // num_heads
@@ -78,7 +91,11 @@ class MultiHeadSelfAttention(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, X: torch.Tensor):
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        """
+        :param X: input tensor of shape (batch_size, block_size, embed_dim)
+        :return: output tensor of shape (batch_size, block_size, embed_dim)
+        """
         B, S, E = X.shape
 
         key, query, value = [layer(X).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
@@ -97,7 +114,7 @@ class MultiHeadSelfAttention(nn.Module):
 
 
 class FeedForward(nn.Module):
-    def __init__(self, embed_dim, dropout: float):
+    def __init__(self, embed_dim: int, dropout: float):
         super(FeedForward, self).__init__()
         self.layers = nn.Sequential(
             nn.Linear(embed_dim, 4 * embed_dim),
@@ -107,12 +124,12 @@ class FeedForward(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, X):
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
         return self.dropout(self.layers(X))
 
 
 class Block(nn.Module):
-    def __init__(self, embed_dim, num_heads, dropout: float):
+    def __init__(self, embed_dim: int, num_heads: int, dropout: float):
         super(Block, self).__init__()
         assert embed_dim % num_heads == 0
         self.multi_head = MultiHeadSelfAttention(embed_dim, num_heads, dropout)
@@ -120,7 +137,7 @@ class Block(nn.Module):
         self.lnorm1 = nn.LayerNorm(embed_dim)
         self.lnorm2 = nn.LayerNorm(embed_dim)
 
-    def forward(self, X):
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
         X = X + self.multi_head(self.lnorm1(X))
         X = X + self.feed_forward(self.lnorm2(X))
         return X
@@ -131,8 +148,8 @@ class GPT(nn.Module):
         super(GPT, self).__init__()
         self.lookup = nn.Embedding(vocab_size, embed_dim)
         self.position = nn.Embedding(block_size, embed_dim)
-        self.blocks = nn.Sequential(*[Block(embed_dim, num_heads, dropout) for _ in range(num_blocks)],
-                                    )
+        self.blocks = nn.Sequential(*[Block(embed_dim, num_heads, dropout) for _ in range(num_blocks)])
+
         self.lnorm = nn.LayerNorm(embed_dim)
         self.projection = nn.Linear(embed_dim, vocab_size)
 
@@ -181,6 +198,7 @@ model = model.to(device)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
+# training
 for i in range(max_iters):
     if i % eval_interval == 0:
         losses = estimate_loss(model)
