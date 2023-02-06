@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from typing import Tuple, Dict
+
 batch_size = 64
 block_size = 256
 
@@ -24,8 +25,8 @@ char_set = sorted(list(set(text)))
 chtoi = {ch: i for i, ch in enumerate(char_set)}
 itoch = {i: ch for i, ch in enumerate(char_set)}
 
-encode = lambda s: [chtoi[c] for c in s] # encoding function which maps chars to index
-decode = lambda n: "".join([itoch[e] for e in n]) #decoding function which maps indexes to chars
+encode = lambda s: [chtoi[c] for c in s]  # encoding function which maps chars to index
+decode = lambda n: "".join([itoch[e] for e in n])  # decoding function which maps indexes to chars
 
 data = torch.tensor(encode(text), dtype=torch.long)
 
@@ -33,15 +34,17 @@ dividing_index = int(data.shape[0] * train_percentage)
 train_data = data[:dividing_index]
 val_data = data[dividing_index:]
 
+
 def get_data_batch(part: str) -> Tuple[torch.Tensor, torch.Tensor]:
     data = train_data if part == "train" else val_data
     indices = torch.randint(data.shape[0] - block_size, (batch_size,))
     x = torch.stack([data[i: (i + block_size)] for i in indices])
     x = x.to(device)
-    y = torch.stack([data[(i+1): (i + block_size + 1)] for i in indices])
+    y = torch.stack([data[(i + 1): (i + block_size + 1)] for i in indices])
     y = y.to(device)
 
     return x, y
+
 
 @torch.no_grad()
 def estimate_loss(model: nn.Module) -> Dict:
@@ -60,6 +63,7 @@ def estimate_loss(model: nn.Module) -> Dict:
     model.train()
     return out
 
+
 class Head(nn.Module):
     def __init__(self, embed_dim: int, head_dim: int, dropout: float):
         super(Head, self).__init__()
@@ -72,18 +76,20 @@ class Head(nn.Module):
 
     def forward(self, X):
         B, S, E = X.shape
-        key = self.key(X) # (B, S, H)
-        value = self.value(X) # (B, S, H)
-        query = self.query(X) # (B, S, H)
+        key = self.key(X)  # (B, S, H)
+        value = self.value(X)  # (B, S, H)
+        query = self.query(X)  # (B, S, H)
 
-        weight = query @ key.transpose(-2, -1) * E ** - 0.5 # (B, S, H) matmul (B, H, S) divided by sqrt of embedding dim
+        weight = query @ key.transpose(-2,
+                                       -1) * E ** - 0.5  # (B, S, H) matmul (B, H, S) divided by sqrt of embedding dim
         weight = weight.masked_fill(self.tril[:S, :S] == 0, -float("inf"))
         # weight is (B, S, S)
         weight = F.softmax(weight, dim=-1)
         weight = self.dropout(weight)
-        output = weight @ value # (B, S, S) @ (B, S, H) -> (B, S, H)
+        output = weight @ value  # (B, S, S) @ (B, S, H) -> (B, S, H)
 
         return output
+
 
 class MultiHeadSelfAttention(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int, dropout: float):
@@ -97,11 +103,12 @@ class MultiHeadSelfAttention(nn.Module):
         output = torch.cat([layer(X) for layer in self.heads], -1)
         return self.dropout(self.projection(output))
 
+
 class FeedForward(nn.Module):
     def __init__(self, embed_dim, dropout: float):
         super(FeedForward, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(embed_dim,4 * embed_dim),
+            nn.Linear(embed_dim, 4 * embed_dim),
             nn.ReLU(),
             nn.Linear(4 * embed_dim, embed_dim)
         )
@@ -133,10 +140,9 @@ class GPT(nn.Module):
         self.lookup = nn.Embedding(vocab_size, embed_dim)
         self.position = nn.Embedding(block_size, embed_dim)
         self.blocks = nn.Sequential(*[Block(embed_dim, num_heads, dropout) for _ in range(num_blocks)],
-        )
+                                    )
         self.lnorm = nn.LayerNorm(embed_dim)
         self.projection = nn.Linear(embed_dim, vocab_size)
-
 
     def forward(self, input: torch.Tensor, target: torch.Tensor = None) -> Tuple[torch.Tensor, int]:
         B, S = input.shape
@@ -160,20 +166,21 @@ class GPT(nn.Module):
 
     @torch.no_grad()
     def generate(self, idx: torch.Tensor, max_length: int = 200) -> torch.Tensor:
+        model.eval()
 
         for _ in range(max_length):
             # restriction on only last block_size inputs
             idx_crop = idx[:, -block_size:]
-            #losses not used because it's none
+            # losses not used because it's none
             logits, loss = self(idx_crop)
 
-            logits = logits[:,-1, :]
+            logits = logits[:, -1, :]
             probabilities = F.softmax(logits, dim=-1)
 
             next_input = torch.multinomial(probabilities, num_samples=1)
 
             idx = torch.cat((idx, next_input), dim=1)
-
+        model.train()
         return idx
 
 
@@ -193,7 +200,10 @@ for i in range(max_iters):
     loss.backward()
     optimizer.step()
 
-
-#generation
+# generation
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(model.generate(context, 400)[0].tolist()))
+
+# write output to file
+with open("output.txt", "w") as f:
+    f.write(decode(model.generate(context, 10000)[0].tolist()))
