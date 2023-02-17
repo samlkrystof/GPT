@@ -75,6 +75,7 @@ def estimate_loss(model: nn.Module) -> Dict:
 
 
 class MultiHeadSelfAttention(nn.Module):
+
     """
     Multi-head self-attention layer
     """

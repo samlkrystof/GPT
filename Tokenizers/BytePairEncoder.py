@@ -22,11 +22,15 @@ def update_splits(splits: Dict[str, List[str]], max_freq_pair: Tuple[str, str]) 
 class BytePairEncoder(AbstractTokenizer):
 
     def __init__(self, vocab_size: int):
+        self.merges = None
+        self.encode_vocab = None
+        self.decode_vocab = None
         self.vocab_size = vocab_size
         self.regex_pattern = regex.compile(
             r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
     def train_tokenizer(self, text: str):
+        merges = {}
         ch2i = {chr(i): i for i in range(256)}
         tokenized_text = self.regex_pattern.findall(text)
         utf8_text = [token.encode("utf-8") for token in tokenized_text]
@@ -39,14 +43,22 @@ class BytePairEncoder(AbstractTokenizer):
         splits = {word: [ch for ch in word] for word in word_counts.keys()}
 
         pair_frequencies = {}
-        for word, split in splits.items():
-            for i in range(len(split) - 1):
-                if (split[i], split[i + 1]) not in pair_frequencies:
-                    pair_frequencies[(split[i], split[i + 1])] = 0
-                pair_frequencies[(split[i], split[i + 1])] += word_counts[word]
+        while len(ch2i) < self.vocab_size:
+            for word, split in splits.items():
+                for i in range(len(split) - 1):
+                    if (split[i], split[i + 1]) not in pair_frequencies:
+                        pair_frequencies[(split[i], split[i + 1])] = 0
+                    pair_frequencies[(split[i], split[i + 1])] += word_counts[word]
 
-        max_freq_pair = max(pair_frequencies, key=pair_frequencies.get)
-        update_splits(splits, max_freq_pair)
+            max_pair = max(pair_frequencies, key=pair_frequencies.get)
+            splits = update_splits(splits, max_pair)
+            ch2i[max_pair[0] + max_pair[1]] = len(ch2i)
+            merges[max_pair] = max_pair[0] + max_pair[1]
+
+        self.encode_vocab = ch2i
+        self.decode_vocab = {v: k for k, v in ch2i.items()}
+        self.merges = merges
+
 
     def decode(self, tokens: List[int]) -> str:
         pass
