@@ -24,3 +24,7 @@ class AbstractTokenizer:
     @abstractmethod
     def get_vocab(self) -> List[str]:
         pass
+
+    @abstractmethod
+    def train_tokenizer(self, text: str):
+        pass
