@@ -65,7 +65,11 @@ class BytePairEncoder(AbstractTokenizer):
         return utf8_text
 
     def decode(self, tokens: List[int]) -> str:
-        pass
+        tokens = [self.decode_vocab[token] for token in tokens]
+        result = "".join(tokens)
+        result_bytes = bytearray(result)
+        result = result_bytes.decode("utf-8", errors="replace")
+        return result
 
     def tokenize(self, text: str) -> List[str]:
         result = []
