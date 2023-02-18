@@ -83,14 +83,6 @@ class BytePairEncoder(AbstractTokenizer):
 
         return result
 
-
-
-
-
-
-
-
-
     def encode(self, text: str) -> List[int]:
         result = []
         preprocessed = self.preprocess_text(text)
@@ -110,9 +102,6 @@ class BytePairEncoder(AbstractTokenizer):
             result.append(actual)
 
         return result
-
-
-
 
     def get_vocab_size(self) -> int:
         pass
