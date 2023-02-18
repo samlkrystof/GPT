@@ -32,8 +32,7 @@ class BytePairEncoder(AbstractTokenizer):
     def train_tokenizer(self, text: str):
         merges = {}
         ch2i = {chr(i): i for i in range(256)}
-        tokenized_text = self.regex_pattern.findall(text)
-        utf8_text = [token.encode("utf-8") for token in tokenized_text]
+        utf8_text = self.preprocess_text(text)
         word_counts = {}
         for word in utf8_text:
             if word not in word_counts:
@@ -52,6 +51,7 @@ class BytePairEncoder(AbstractTokenizer):
 
             max_pair = max(pair_frequencies, key=pair_frequencies.get)
             splits = update_splits(splits, max_pair)
+
             ch2i[max_pair[0] + max_pair[1]] = len(ch2i)
             merges[max_pair] = max_pair[0] + max_pair[1]
 
@@ -59,15 +59,60 @@ class BytePairEncoder(AbstractTokenizer):
         self.decode_vocab = {v: k for k, v in ch2i.items()}
         self.merges = merges
 
+    def preprocess_text(self, text: str):
+        tokenized_text = self.regex_pattern.findall(text)
+        utf8_text = [token.encode("utf-8") for token in tokenized_text]
+        return utf8_text
 
     def decode(self, tokens: List[int]) -> str:
         pass
 
     def tokenize(self, text: str) -> List[str]:
-        pass
+        result = []
+        preprocessed = self.preprocess_text(text)
+        splits = {word: [c for c in word] for word in preprocessed}
+        for word, split in splits.items():
+            left = 0
+            while left < len(word) - 1:
+                if (split[left], split[left + 1]) in self.merges:
+                    split = split[:left] + [self.merges[(split[left], split[left + 1])]] + split[left + 2:]
+                else:
+                    left += 1
+
+            result.append(split)
+
+        return result
+
+
+
+
+
+
+
+
 
     def encode(self, text: str) -> List[int]:
-        pass
+        result = []
+        preprocessed = self.preprocess_text(text)
+        splits = {word: [c for c in word] for word in preprocessed}
+        for word, split in splits.items():
+            left = 0
+            right = 1
+            actual = 0
+            while left < len(word) - 1:
+                if word[left: right] in self.encode_vocab:
+                    actual = self.encode_vocab[word[left: right]]
+                else:
+                    result.append(actual)
+                    left = right
+                right += 1
+
+            result.append(actual)
+
+        return result
+
+
+
 
     def get_vocab_size(self) -> int:
         pass
