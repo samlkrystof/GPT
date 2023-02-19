@@ -105,15 +105,16 @@ class BytePairEncoder(AbstractTokenizer.AbstractTokenizer):
         return list(self.encode_vocab.keys())
 
 
-corpus = [
-    "This is the byte pair encoder tokenizer. This is about splitting text into tokens. This class shows BPE tokenizer "
-    "algorithm. Hopefully, you will be able to understand how they are trained and generate tokens."
-]
+if __name__ == "__main__":
+    corpus = [
+        "This is the byte pair encoder tokenizer. This is about splitting text into tokens. This class shows BPE "
+        "tokenizer algorithm. Hopefully, you will be able to understand how they are trained and generate tokens."
+    ]
 
-tokenizer = BytePairEncoder(280)
-tokenizer.train_tokenizer(" ".join(corpus))
+    tokenizer = BytePairEncoder(280)
+    tokenizer.train_tokenizer(" ".join(corpus))
 
-encoded = tokenizer.encode("Hello!! I'm Iron man. The year which is right now is 2023. w00t :D 🤗")
-print(tokenizer.tokenize("Hello!! The year which is right now is 2023. w00t :D 🤗"))
-print(encoded)
-print(tokenizer.decode(encoded))
+    encoded = tokenizer.encode("Hello!! I'm Iron man. The year which is right now is 2023. w00t :D 🤗")
+    print(tokenizer.tokenize("Hello!! The year which is right now is 2023. w00t :D 🤗"))
+    print(encoded)
+    print(tokenizer.decode(encoded))
