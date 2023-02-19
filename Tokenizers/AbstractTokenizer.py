@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import List
 
-class AbstractTokenizer:
+
+class AbstractTokenizer(ABC):
 
     def __init__(self, vocab_size: int):
         self.vocab_size = vocab_size
