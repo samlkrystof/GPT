@@ -6,8 +6,9 @@ import regex
 
 def update_splits(splits: Dict[str, List[str]], max_freq_pair: Tuple[str, str]) -> Dict[str, List[str]]:
     first, second = max_freq_pair
-    i = 0
+
     for word, split in splits.items():
+        i = 0
         while i < len(split) - 1:
             if split[i] == first and split[i + 1] == second:
                 split = split[:i] + [first + second] + split[i + 2:]
@@ -19,9 +20,10 @@ def update_splits(splits: Dict[str, List[str]], max_freq_pair: Tuple[str, str]) 
     return splits
 
 
-class BytePairEncoder(AbstractTokenizer):
+class BytePairEncoder(AbstractTokenizer.AbstractTokenizer):
 
     def __init__(self, vocab_size: int):
+        super().__init__(vocab_size)
         self.merges = None
         self.encode_vocab = None
         self.decode_vocab = None
@@ -39,10 +41,10 @@ class BytePairEncoder(AbstractTokenizer):
                 word_counts[word] = 0
             word_counts[word] += 1
 
-        splits = {word: [ch for ch in word] for word in word_counts.keys()}
+        splits = {word: [chr(ch) for ch in word] for word in word_counts.keys()}
 
-        pair_frequencies = {}
         while len(ch2i) < self.vocab_size:
+            pair_frequencies = {}
             for word, split in splits.items():
                 for i in range(len(split) - 1):
                     if (split[i], split[i + 1]) not in pair_frequencies:
@@ -52,7 +54,10 @@ class BytePairEncoder(AbstractTokenizer):
             max_pair = max(pair_frequencies, key=pair_frequencies.get)
             splits = update_splits(splits, max_pair)
 
-            ch2i[max_pair[0] + max_pair[1]] = len(ch2i)
+            ch2i[f"{max_pair[0]}{max_pair[1]}"] = len(ch2i)
+
+            print(f"Added {max_pair[0]}{max_pair[1]} to vocab, len: {len(ch2i)}")
+
             merges[max_pair] = max_pair[0] + max_pair[1]
 
         self.encode_vocab = ch2i
@@ -66,18 +71,18 @@ class BytePairEncoder(AbstractTokenizer):
 
     def decode(self, tokens: List[int]) -> str:
         tokens = [self.decode_vocab[token] for token in tokens]
-        result = "".join(tokens)
-        result_bytes = bytearray(result)
+        joined = "".join(tokens)
+        result_bytes = bytearray([ord(c) for c in joined])
         result = result_bytes.decode("utf-8", errors="replace")
         return result
 
     def tokenize(self, text: str) -> List[str]:
         result = []
         preprocessed = self.preprocess_text(text)
-        splits = {word: [c for c in word] for word in preprocessed}
+        splits = {word: [chr(c) for c in word] for word in preprocessed}
         for word, split in splits.items():
             left = 0
-            while left < len(word) - 1:
+            while left < len(split) - 1:
                 if (split[left], split[left + 1]) in self.merges:
                     split = split[:left] + [self.merges[(split[left], split[left + 1])]] + split[left + 2:]
                 else:
@@ -85,30 +90,30 @@ class BytePairEncoder(AbstractTokenizer):
 
             result.append(split)
 
-        return result
+        flattened = [token for word in result for token in word]
+        return flattened
 
     def encode(self, text: str) -> List[int]:
-        result = []
-        preprocessed = self.preprocess_text(text)
-        splits = {word: [c for c in word] for word in preprocessed}
-        for word, split in splits.items():
-            left = 0
-            right = 1
-            actual = 0
-            while left < len(word) - 1:
-                if word[left: right] in self.encode_vocab:
-                    actual = self.encode_vocab[word[left: right]]
-                else:
-                    result.append(actual)
-                    left = right
-                right += 1
-
-            result.append(actual)
-
+        tokenized = self.tokenize(text)
+        result = [self.encode_vocab[token] for token in tokenized]
         return result
 
     def get_vocab_size(self) -> int:
-        pass
+        return len(self.encode_vocab)
 
     def get_vocab(self) -> List[str]:
-        pass
+        return list(self.encode_vocab.keys())
+
+
+corpus = [
+    "This is the byte pair encoder tokenizer. This is about splitting text into tokens. This class shows BPE tokenizer "
+    "algorithm. Hopefully, you will be able to understand how they are trained and generate tokens."
+]
+
+tokenizer = BytePairEncoder(280)
+tokenizer.train_tokenizer(" ".join(corpus))
+
+encoded = tokenizer.encode("Hello!! I'm Iron man. The year which is right now is 2023. w00t :D 🤗")
+print(tokenizer.tokenize("Hello!! The year which is right now is 2023. w00t :D 🤗"))
+print(encoded)
+print(tokenizer.decode(encoded))
