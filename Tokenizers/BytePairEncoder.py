@@ -1,6 +1,6 @@
 from typing import List, Tuple, Dict
 
-import AbstractTokenizer
+from AbstractTokenizer import AbstractTokenizer, compute_word_frequencies
 import regex
 
 
@@ -20,7 +20,17 @@ def update_splits(splits: Dict[str, List[str]], max_freq_pair: Tuple[str, str]) 
     return splits
 
 
-class BytePairEncoder(AbstractTokenizer.AbstractTokenizer):
+def compute_pair_frequencies(splits, word_counts):
+    pair_frequencies = {}
+    for word, split in splits.items():
+        for i in range(len(split) - 1):
+            if (split[i], split[i + 1]) not in pair_frequencies:
+                pair_frequencies[(split[i], split[i + 1])] = 0
+            pair_frequencies[(split[i], split[i + 1])] += word_counts[word]
+    return pair_frequencies
+
+
+class BytePairEncoder(AbstractTokenizer):
 
     def __init__(self, vocab_size: int):
         super().__init__(vocab_size)
@@ -35,28 +45,17 @@ class BytePairEncoder(AbstractTokenizer.AbstractTokenizer):
         merges = {}
         ch2i = {chr(i): i for i in range(256)}
         utf8_text = self.preprocess_text(text)
-        word_counts = {}
-        for word in utf8_text:
-            if word not in word_counts:
-                word_counts[word] = 0
-            word_counts[word] += 1
+        word_counts = compute_word_frequencies(utf8_text)
 
         splits = {word: [chr(ch) for ch in word] for word in word_counts.keys()}
 
         while len(ch2i) < self.vocab_size:
-            pair_frequencies = {}
-            for word, split in splits.items():
-                for i in range(len(split) - 1):
-                    if (split[i], split[i + 1]) not in pair_frequencies:
-                        pair_frequencies[(split[i], split[i + 1])] = 0
-                    pair_frequencies[(split[i], split[i + 1])] += word_counts[word]
+            pair_frequencies = compute_pair_frequencies(splits, word_counts)
 
             max_pair = max(pair_frequencies, key=pair_frequencies.get)
             splits = update_splits(splits, max_pair)
 
             ch2i[f"{max_pair[0]}{max_pair[1]}"] = len(ch2i)
-
-            print(f"Added {max_pair[0]}{max_pair[1]} to vocab, len: {len(ch2i)}")
 
             merges[max_pair] = max_pair[0] + max_pair[1]
 
