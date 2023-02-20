@@ -10,6 +10,7 @@ def compute_word_frequencies(tokenized_text):
         word_counts[word] += 1
     return word_counts
 
+
 class AbstractTokenizer(ABC):
 
     def __init__(self, vocab_size: int):

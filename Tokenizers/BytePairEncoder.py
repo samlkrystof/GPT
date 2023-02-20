@@ -1,5 +1,5 @@
 from typing import List, Tuple, Dict
-
+from collections import defaultdict
 from AbstractTokenizer import AbstractTokenizer, compute_word_frequencies
 import regex
 
@@ -21,11 +21,9 @@ def update_splits(splits: Dict[str, List[str]], max_freq_pair: Tuple[str, str]) 
 
 
 def compute_pair_frequencies(splits, word_counts):
-    pair_frequencies = {}
+    pair_frequencies = defaultdict(int)
     for word, split in splits.items():
         for i in range(len(split) - 1):
-            if (split[i], split[i + 1]) not in pair_frequencies:
-                pair_frequencies[(split[i], split[i + 1])] = 0
             pair_frequencies[(split[i], split[i + 1])] += word_counts[word]
     return pair_frequencies
 
