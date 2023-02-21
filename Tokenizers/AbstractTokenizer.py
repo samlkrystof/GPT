@@ -12,15 +12,6 @@ def compute_word_frequencies(tokenized_text):
     return word_counts
 
 
-def compute_pair_frequencies(splits, word_counts):
-    pair_frequencies = defaultdict(int)
-    for word, split in splits.items():
-        for i in range(len(split) - 1):
-            pair_frequencies[(split[i], split[i + 1])] += word_counts[word]
-
-    return pair_frequencies
-
-
 class AbstractTokenizer(ABC):
 
     @abstractmethod

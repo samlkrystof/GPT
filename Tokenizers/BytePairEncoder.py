@@ -1,7 +1,17 @@
-from typing import List, Tuple, Dict
 from collections import defaultdict
-from AbstractTokenizer import AbstractTokenizer, compute_word_frequencies, compute_pair_frequencies
+from typing import List, Tuple, Dict
+
 import regex
+from AbstractTokenizer import AbstractTokenizer, compute_word_frequencies
+
+
+def compute_pair_frequencies(splits, word_counts):
+    pair_frequencies = defaultdict(int)
+    for word, split in splits.items():
+        for i in range(len(split) - 1):
+            pair_frequencies[(split[i], split[i + 1])] += word_counts[word]
+
+    return pair_frequencies
 
 
 def update_splits(splits: Dict[str, List[str]], max_freq_pair: Tuple[str, str]) -> Dict[str, List[str]]:
@@ -96,15 +106,13 @@ class BytePairEncoder(AbstractTokenizer):
 
 
 if __name__ == "__main__":
-    corpus = [
-        "This is the byte pair encoder tokenizer. This is about splitting text into tokens. This class shows BPE "
-        "tokenizer algorithm. Hopefully, you will be able to understand how they are trained and generate tokens."
-    ]
+    corpus = "This is the byte pair encoder tokenizer. This is about splitting text into tokens. This class shows BPE " \
+             "tokenizer algorithm. Hopefully, you will be able to understand how they are trained to generate tokens."
 
     tokenizer = BytePairEncoder(280)
-    tokenizer.train_tokenizer(" ".join(corpus))
+    tokenizer.train_tokenizer(corpus)
 
-    encoded = tokenizer.encode("Hello!! I'm Iron man. The year which is right now is 2023. w00t :D 🤗")
     print(tokenizer.tokenize("Hello!! The year which is right now is 2023. w00t :D 🤗"))
+    encoded = tokenizer.encode("Hello!! I'm Iron man. The year which is right now is 2023. w00t :D 🤗")
     print(encoded)
     print(tokenizer.decode(encoded))
