@@ -85,11 +85,11 @@ class WordPiece(AbstractTokenizer):
     def preprocess_text(self, text):
         text = text.strip()
         reg_pattern = "".join(self.alphabet)
-        splitted_text = re.split(f"[^{reg_pattern}]+", text)
+        split_text = re.split(f"[^{reg_pattern}]+", text)
 
-        splitted_text = [word for word in splitted_text if word != ""]
-        splitted_text = [word.strip(" ") for word in splitted_text]
-        return splitted_text
+        split_text = [word for word in split_text if word != ""]
+        split_text = [word.strip(" ") for word in split_text]
+        return split_text
 
     def tokenize(self, text: str) -> List[str]:
         splitted_text = self.preprocess_text(text)
