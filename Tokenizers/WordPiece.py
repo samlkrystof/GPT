@@ -49,6 +49,8 @@ class WordPiece(AbstractTokenizer):
 
     def __init__(self, vocab_size: int):
         super(WordPiece, self).__init__()
+        self.alphabet = [chr(i) for i in range(44, 59)] + [chr(i) for i in range(65, 91)] + \
+                   [chr(i) for i in range(97, 123)] + ["?", "!", "'", "(", ")"]
         self.vocab_size = vocab_size
         self.encode_vocab = None
         self.decode_vocab = None
@@ -59,11 +61,9 @@ class WordPiece(AbstractTokenizer):
 
         word_counts = compute_word_frequencies(splitted_text)
 
-        alphabet = [chr(i) for i in range(44, 59)] + [chr(i) for i in range(65, 91)] + \
-                   [chr(i) for i in range(97, 123)] + ["?", "!", "'", "(", ")"]
-        length = len(alphabet)
-        ch2i = {ch: i for i, ch in enumerate(alphabet)}
-        ch2i.update({f"##{ch}": (i + length) for i, ch in enumerate(alphabet)})
+        length = len(self.alphabet)
+        ch2i = {ch: i for i, ch in enumerate(self.alphabet)}
+        ch2i.update({f"##{ch}": (i + length) for i, ch in enumerate(self.alphabet)})
         splits = {word: [ch if i == 0 else f"##{ch}" for i, ch in enumerate(word)] for word in word_counts.keys()}
         while len(ch2i) < self.vocab_size:
             pair_freq, letter_freq = compute_frequencies(splits, word_counts)
@@ -84,7 +84,9 @@ class WordPiece(AbstractTokenizer):
 
     def preprocess_text(self, text):
         text = text.strip()
-        splitted_text = re.split(r"(\W+)", text)
+        reg_pattern = "".join(self.alphabet)
+        splitted_text = re.split(f"[^{reg_pattern}]+", text)
+
         splitted_text = [word for word in splitted_text if word != ""]
         splitted_text = [word.strip(" ") for word in splitted_text]
         return splitted_text
