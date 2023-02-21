@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from typing import List
 
 
@@ -11,10 +12,16 @@ def compute_word_frequencies(tokenized_text):
     return word_counts
 
 
-class AbstractTokenizer(ABC):
+def compute_pair_frequencies(splits, word_counts):
+    pair_frequencies = defaultdict(int)
+    for word, split in splits.items():
+        for i in range(len(split) - 1):
+            pair_frequencies[(split[i], split[i + 1])] += word_counts[word]
 
-    def __init__(self, vocab_size: int):
-        self.vocab_size = vocab_size
+    return pair_frequencies
+
+
+class AbstractTokenizer(ABC):
 
     @abstractmethod
     def train_tokenizer(self, text: str):

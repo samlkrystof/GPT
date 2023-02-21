@@ -1,6 +1,6 @@
 from typing import List, Tuple, Dict
 from collections import defaultdict
-from AbstractTokenizer import AbstractTokenizer, compute_word_frequencies
+from AbstractTokenizer import AbstractTokenizer, compute_word_frequencies, compute_pair_frequencies
 import regex
 
 
@@ -8,6 +8,7 @@ def update_splits(splits: Dict[str, List[str]], max_freq_pair: Tuple[str, str]) 
     first, second = max_freq_pair
 
     for word, split in splits.items():
+
         i = 0
         while i < len(split) - 1:
             if split[i] == first and split[i + 1] == second:
@@ -20,18 +21,10 @@ def update_splits(splits: Dict[str, List[str]], max_freq_pair: Tuple[str, str]) 
     return splits
 
 
-def compute_pair_frequencies(splits, word_counts):
-    pair_frequencies = defaultdict(int)
-    for word, split in splits.items():
-        for i in range(len(split) - 1):
-            pair_frequencies[(split[i], split[i + 1])] += word_counts[word]
-    return pair_frequencies
-
-
 class BytePairEncoder(AbstractTokenizer):
 
     def __init__(self, vocab_size: int):
-        super().__init__(vocab_size)
+        super(BytePairEncoder, self).__init__()
         self.merges = None
         self.encode_vocab = None
         self.decode_vocab = None
