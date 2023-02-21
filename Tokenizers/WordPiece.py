@@ -50,11 +50,10 @@ class WordPiece(AbstractTokenizer):
     def __init__(self, vocab_size: int):
         super(WordPiece, self).__init__()
         self.alphabet = [chr(i) for i in range(44, 59)] + [chr(i) for i in range(65, 91)] + \
-                   [chr(i) for i in range(97, 123)] + ["?", "!", "'", "(", ")"]
+                        [chr(i) for i in range(97, 123)] + ["?", "!", "'", "(", ")"]
         self.vocab_size = vocab_size
         self.encode_vocab = None
         self.decode_vocab = None
-        # self.regex_pattern = regex.compile("'s|'t|'re|'ve|'m|'ll|'d|\p{L}+|\p{N}+|[^\s\p{L}\p{N}]+")
 
     def train_tokenizer(self, text: str):
         splitted_text = self.preprocess_text(text)
