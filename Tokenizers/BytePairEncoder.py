@@ -5,7 +5,7 @@ import regex
 from AbstractTokenizer import AbstractTokenizer, compute_word_frequencies
 
 
-def compute_pair_frequencies(splits, word_counts):
+def compute_pair_frequencies(splits: Dict[str, List[str]], word_counts: Dict[str, int]) -> Dict[Tuple[str, str], int]:
     pair_frequencies = defaultdict(int)
     for word, split in splits.items():
         for i in range(len(split) - 1):
@@ -42,7 +42,7 @@ class BytePairEncoder(AbstractTokenizer):
         self.regex_pattern = regex.compile(
             r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
-    def train_tokenizer(self, text: str):
+    def train_tokenizer(self, text: str) -> None:
         merges = {}
         ch2i = {chr(i): i for i in range(256)}
         utf8_text = self.preprocess_text(text)
@@ -64,7 +64,7 @@ class BytePairEncoder(AbstractTokenizer):
         self.decode_vocab = {v: k for k, v in ch2i.items()}
         self.merges = merges
 
-    def preprocess_text(self, text: str):
+    def preprocess_text(self, text: str) -> List[str]:
         tokenized_text = self.regex_pattern.findall(text)
         utf8_text = [token.encode("utf-8") for token in tokenized_text]
         return utf8_text

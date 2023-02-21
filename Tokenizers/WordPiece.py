@@ -1,11 +1,12 @@
 import re
 from collections import defaultdict
-from typing import List
+from typing import List, Dict, Tuple
 
 from AbstractTokenizer import AbstractTokenizer, compute_word_frequencies
 
 
-def compute_frequencies(splits: dict, word_counts: dict) -> (dict, dict):
+def compute_frequencies(splits: Dict[str, List[str]], word_counts: Dict[str, int]) \
+        -> Tuple[Dict[Tuple[str, str], int], Dict[str, int]]:
     pair_freq = defaultdict(int)
     letter_freq = defaultdict(int)
 
@@ -21,13 +22,13 @@ def compute_frequencies(splits: dict, word_counts: dict) -> (dict, dict):
     return pair_freq, letter_freq
 
 
-def find_max_pair(pair_freq, letter_freq):
+def find_max_pair(pair_freq: Dict[Tuple[str, str], int], letter_freq: Dict[str, int]) -> Tuple[str, str]:
     pair_scores = {pair: pair_freq[pair] / (letter_freq[pair[0]] * letter_freq[pair[1]]) for pair in pair_freq}
     max_pair = max(pair_scores, key=pair_scores.get)
     return max_pair
 
 
-def update_splits(splits: dict, max_freq_pair: tuple) -> dict:
+def update_splits(splits: Dict[str, List[str]], max_freq_pair: Tuple[str, str]) -> Dict[str, List[str]]:
     first, second = max_freq_pair
 
     for word, split in splits.items():
@@ -55,7 +56,7 @@ class WordPiece(AbstractTokenizer):
         self.encode_vocab = None
         self.decode_vocab = None
 
-    def train_tokenizer(self, text: str):
+    def train_tokenizer(self, text: str) -> None:
         splitted_text = self.preprocess_text(text)
 
         word_counts = compute_word_frequencies(splitted_text)
@@ -81,7 +82,7 @@ class WordPiece(AbstractTokenizer):
         self.encode_vocab = ch2i
         self.decode_vocab = {v: k for k, v in ch2i.items()}
 
-    def preprocess_text(self, text):
+    def preprocess_text(self, text: str) -> List[str]:
         text = text.strip()
         reg_pattern = "".join(self.alphabet)
         split_text = re.split(f"[^{reg_pattern}]+", text)
