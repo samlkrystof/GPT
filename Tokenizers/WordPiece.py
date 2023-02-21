@@ -59,14 +59,14 @@ class WordPiece(AbstractTokenizer):
 
         word_counts = compute_word_frequencies(splitted_text)
 
-        alphabet = [chr(i) for i in range(48, 58)] + [chr(i) for i in range(65, 91)] + [chr(i) for i in range(97, 123)]
+        alphabet = [chr(i) for i in range(44, 59)] + [chr(i) for i in range(65, 91)] + \
+                   [chr(i) for i in range(97, 123)] + ["?", "!", "'", "(", ")"]
         length = len(alphabet)
         ch2i = {ch: i for i, ch in enumerate(alphabet)}
         ch2i.update({f"##{ch}": (i + length) for i, ch in enumerate(alphabet)})
         splits = {word: [ch if i == 0 else f"##{ch}" for i, ch in enumerate(word)] for word in word_counts.keys()}
         while len(ch2i) < self.vocab_size:
             pair_freq, letter_freq = compute_frequencies(splits, word_counts)
-            print(len(pair_freq))
             max_pair = find_max_pair(pair_freq, letter_freq)
             splits = update_splits(splits, max_pair)
 
@@ -92,7 +92,6 @@ class WordPiece(AbstractTokenizer):
     def tokenize(self, text: str) -> List[str]:
         splitted_text = self.preprocess_text(text)
 
-
         tokens = []
         for word in splitted_text:
 
@@ -100,7 +99,6 @@ class WordPiece(AbstractTokenizer):
             right = 1
             actual_token = "[UNK]"
 
-            print(word)
             while left < len(word) and right <= len(word):
                 subword = word[left:right] if left == 0 else f"##{word[left:right]}"
                 if subword in self.encode_vocab:
@@ -121,26 +119,36 @@ class WordPiece(AbstractTokenizer):
         return tokens
 
     def encode(self, text: str) -> List[int]:
-        pass
+        tokens = self.tokenize(text)
+        return [self.encode_vocab[token] for token in tokens]
 
     def decode(self, tokens: List[int]) -> str:
-        pass
+        words = []
+        for token in tokens:
+            token = self.decode_vocab[token]
+            if token == "[PAD]" or token == "[UNK]" or token == "[CLS]" or token == "[SEP]" or token == "[MASK]":
+                continue
+            elif token.startswith("##"):
+                words[-1] += token[2:]
+            else:
+                words.append(token)
+        return " ".join(words)
 
     def get_vocab_size(self) -> int:
-        pass
+        return len(self.encode_vocab)
 
     def get_vocab(self) -> List[str]:
-        pass
+        return list(self.encode_vocab.keys())
 
 
 if __name__ == "__main__":
-    corpus = "This is the byte pair encoder tokenizer. This is about splitting text into tokens. This class shows BPE " \
+    corpus = "This is the word piece tokenizer. This is about splitting text into tokens. This class shows word piece " \
              "tokenizer algorithm. Hopefully, you will be able to understand how they are trained to generate tokens."
 
     tokenizer = WordPiece(100)
     tokenizer.train_tokenizer(corpus)
 
     print(tokenizer.tokenize("Hello!! The year which is right now is 2023. w00t :D 🤗"))
-    # encoded = tokenizer.encode("Hello!! I'm Iron man. The year which is right now is 2023. w00t :D 🤗")
-    # print(encoded)
-    # print(tokenizer.decode(encoded))
+    encoded = tokenizer.encode("Hello!! I'm Iron man. The year which is right now is 2023. w00t :D 🤗")
+    print(encoded)
+    print(tokenizer.decode(encoded))
