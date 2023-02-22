@@ -95,6 +95,7 @@ class WordPiece(AbstractTokenizer):
         splitted_text = self.preprocess_text(text)
 
         tokens = []
+        tokens.append("[CLS]")
         for word in splitted_text:
 
             left = 0
@@ -118,6 +119,8 @@ class WordPiece(AbstractTokenizer):
 
             if actual_token != "[UNK]":
                 tokens.append(actual_token)
+
+        tokens.append("[SEP]")
         return tokens
 
     def encode(self, text: str) -> List[int]:
@@ -150,7 +153,7 @@ if __name__ == "__main__":
     tokenizer = WordPiece(100)
     tokenizer.train_tokenizer(corpus)
 
-    print(tokenizer.tokenize("Hello!! The year which is right now is 2023. w00t :D 🤗"))
+    print(tokenizer.tokenize("Hello!! I'm Iron man. The year which is right now is 2023. w00t :D 🤗"))
     encoded = tokenizer.encode("Hello!! I'm Iron man. The year which is right now is 2023. w00t :D 🤗")
     print(encoded)
     print(tokenizer.decode(encoded))
