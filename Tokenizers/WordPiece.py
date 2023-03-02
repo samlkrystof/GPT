@@ -94,8 +94,7 @@ class WordPiece(AbstractTokenizer):
     def tokenize(self, text: str) -> List[str]:
         splitted_text = self.preprocess_text(text)
 
-        tokens = []
-        tokens.append("[CLS]")
+        tokens = ["[CLS]"]
         for word in splitted_text:
 
             left = 0

@@ -174,7 +174,7 @@ class GPT(nn.Module):
 
         return logits, loss
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def generate(self, idx: torch.Tensor, max_length: int = 200) -> torch.Tensor:
         model.eval()
 
